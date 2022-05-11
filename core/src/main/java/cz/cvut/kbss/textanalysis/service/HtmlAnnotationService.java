@@ -16,6 +16,9 @@
 package cz.cvut.kbss.textanalysis.service;
 
 import cz.cvut.kbss.textanalysis.Constants;
+import cz.cvut.kbss.textanalysis.dto.AnnotationResult;
+import cz.cvut.kbss.textanalysis.dto.TermOccurrence;
+import cz.cvut.kbss.textanalysis.dto.TermOccurrencesSelector;
 import cz.cvut.kbss.textanalysis.dto.TextAnalysisInput;
 import cz.cvut.kbss.textanalysis.keywordextractor.KeywordExtractorAPI;
 import cz.cvut.kbss.textanalysis.keywordextractor.model.KeywordExtractorResult;
@@ -43,6 +46,7 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.jsoup.select.NodeTraversor;
 import org.jsoup.select.NodeVisitor;
+import org.jsoup.select.Selector;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -93,7 +97,7 @@ public class HtmlAnnotationService {
         }
     }
 
-    public String annotate(Boolean enableKeywordExtraction, final TextAnalysisInput input)
+    public Document annotate(Boolean enableKeywordExtraction, final TextAnalysisInput input)
         throws HtmlAnnotationException {
         final Set<URI> vocabularies = getQueryUrlsForVocabularyContext(input);
         final String lang = input.getLanguage();
@@ -122,7 +126,13 @@ public class HtmlAnnotationService {
                 log.error("Document annotation failed.", ex);
                 return new Word[] {new Word("", textChunk, "")};
             }
-        }, doc, lang).toString();
+        }, doc, lang);
+    }
+
+    public AnnotationResult annotateToOccurrences(Boolean enableKeywordExtraction, final TextAnalysisInput input)
+            throws HtmlAnnotationException {
+        Document output = this.annotate(enableKeywordExtraction, input);
+        return transformAnnotationOutputToOccurrences(output);
     }
 
     class ChunkIterator implements NodeVisitor {
@@ -199,4 +209,51 @@ public class HtmlAnnotationService {
         return (node.attr("typeof").equals(Constants.NS_TERMIT + "výskyt-termu") ||
             node.attr("typeof").equals("ddo:výskyt-termu"));
     }
+
+    private AnnotationResult transformAnnotationOutputToOccurrences(Document annotationOutput){
+        List<TermOccurrencesSelector> termOccurrencesResult = new ArrayList<>();
+        final Map<String, List<TermOccurrence>> elementsMap = new HashMap<>();
+        annotationOutput.select(".termit-highlight").forEach((highlightElement) -> {
+            String offset = "";
+            Node currNode = highlightElement;
+            while (currNode.previousSibling() != null){
+                currNode = currNode.previousSibling();
+                if (currNode instanceof TextNode){
+                    offset = ((TextNode) currNode).getWholeText() + offset;
+                } else if (currNode instanceof Element){
+                    offset =  ((Element) currNode).wholeText() + offset;
+                }
+            }
+            try {
+                String parentElementSelector = highlightElement.parent().cssSelector();
+                if (!elementsMap.containsKey(parentElementSelector)) {
+                    List<TermOccurrence> occurrencesList = new ArrayList<>();
+                    TermOccurrencesSelector termOccurrencesSelector = new TermOccurrencesSelector();
+                    termOccurrencesSelector.setTermOccurrences(occurrencesList);
+                    termOccurrencesSelector.getCssSelectors().add(parentElementSelector);
+                    elementsMap.put(parentElementSelector, occurrencesList);
+                    termOccurrencesResult.add(termOccurrencesSelector);
+                }
+
+                TermOccurrence termOccurrence = new TermOccurrence(
+                        highlightElement.attr("about"),
+                        highlightElement.attr("property"),
+                        highlightElement.attr("resource"),
+                        highlightElement.attr("content"),
+                        highlightElement.attr("typeof"),
+                        Double.parseDouble(highlightElement.attr("score")),
+                        offset.replaceAll("\\s+", "").length(),
+                        highlightElement.text()
+                );
+                elementsMap.get(parentElementSelector).add(termOccurrence);
+            } catch (Selector.SelectorParseException parsError){
+                System.out.println("parseError: " + parsError);
+            }
+        });
+
+        return new AnnotationResult(annotationOutput.toString(), termOccurrencesResult);
+    }
+
+
+
 }

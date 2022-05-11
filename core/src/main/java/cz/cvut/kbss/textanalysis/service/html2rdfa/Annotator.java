@@ -180,7 +180,7 @@ public class Annotator {
     }
 
     private void annotateNode(final Element node, final String content, final Phrase phrase, final double score, int i) {
-        node.attr("about", "_:" + uniqueId + i);
+        node.attr("about", "_:" + generateID() + i);
         String iri = phrase.getTermIri();
         node.attr("property", "ddo:je-výskytem-termu");
         if ((iri != null) && (!iri.equals(""))) {
@@ -190,6 +190,7 @@ public class Annotator {
         }
         node.attr("typeof", "ddo:výskyt-termu");
         node.attr("score", Double.toString(score));
+        node.attr("class", "termit-highlight");
     }
 
     private int getNumberOfTokens(String string) {

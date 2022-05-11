@@ -37,7 +37,7 @@ public class AnnotationIntegrationTest {
             .setContent(Jsoup
                 .parse(new File(HtmlAnnotationService.class.getResource("/test-1574.html").getFile()),"utf-8").toString());
 
-        final String s = sut.annotate(true, input);
+        final String s = sut.annotate(true, input).toString();
 
         final int count = StringUtils.countMatches(s,
             "https://slovník.gov.cz/generický/testovaci-slovnik-0-0/pojem/parcela");
@@ -58,10 +58,10 @@ public class AnnotationIntegrationTest {
             .setLanguage("cs")
             .setContent(content);
 
-        final String annotatedContent1 = sut.annotate(true, input);
+        final String annotatedContent1 = sut.annotate(true, input).toString();
 
         input.setContent(annotatedContent1);
-        final String annotatedContent2 = sut.annotate(true, input);
+        final String annotatedContent2 = sut.annotate(true, input).toString();
 
         // hard to compare directly due to blank nodes
         assertEquals(annotatedContent1.length(), annotatedContent2.length());
