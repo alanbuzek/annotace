@@ -19,6 +19,7 @@
 
 package cz.cvut.kbss.textanalysis.rest;
 
+import cz.cvut.kbss.textanalysis.dto.AnnotationResult;
 import cz.cvut.kbss.textanalysis.dto.TextAnalysisInput;
 import cz.cvut.kbss.textanalysis.service.HtmlAnnotationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,16 @@ public class AnnotateController {
                                Boolean enableKeywordExtraction,
                            @RequestBody TextAnalysisInput input)
         throws Exception {
-        return service.annotate(enableKeywordExtraction, input);
+        return service.annotate(enableKeywordExtraction, input).toString();
+    }
+
+    @RequestMapping(value = "/annotate-to-occurrences", method = RequestMethod.POST,
+            produces = MediaType.APPLICATION_JSON_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    public AnnotationResult annotateToOccurrences(@RequestParam(value = "enableKeywordExtraction", defaultValue = "false")
+                                   Boolean enableKeywordExtraction,
+                                                  @RequestBody TextAnalysisInput input)
+            throws Exception {
+        return service.annotateToOccurrences(enableKeywordExtraction, input);
     }
 }
